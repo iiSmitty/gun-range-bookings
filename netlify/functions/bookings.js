@@ -15,7 +15,7 @@ const MAX_CAPACITY = {
 exports.handler = async function(event, context) {
     // Set CORS headers
     const headers = {
-        'Access-Control-Allow-Origin': '*', // In production, set this to your GitHub Pages URL
+        'Access-Control-Allow-Origin': 'https://iismitty.github.io/gun-range-bookings/', // In production, set this to your GitHub Pages URL
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
     };
