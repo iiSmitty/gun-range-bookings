@@ -172,7 +172,7 @@ exports.handler = async function(event, context) {
     // POST: Create a new booking
     if (event.httpMethod === 'POST') {
         try {
-            const { name, email, date, rangeType, timeSlot, password_hash: password } = body;
+            const { name, email, date, rangeType, timeSlot, password } = body;
 
             if (!name || !email || !date || !rangeType || !timeSlot || !password) {
                 return {
@@ -226,6 +226,7 @@ exports.handler = async function(event, context) {
                         range_type: rangeType,
                         time_slot: timeSlot,
                         password_hash: password,  // Store the password
+                        password_salt: 'temp_salt',
                         created_at: new Date().toISOString()
                     }
                 ])
