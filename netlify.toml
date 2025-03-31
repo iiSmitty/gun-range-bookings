@@ -1,8 +1,6 @@
 [build]
-# Directory to publish to Netlify's CDN
-publish = "dist"
-# Build command
-command = "npm run build"
+# Directory containing static files to publish
+publish = "."
 # Functions directory
 functions = "netlify/functions"
 
