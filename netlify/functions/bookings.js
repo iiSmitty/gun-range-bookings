@@ -13,19 +13,20 @@ const MAX_CAPACITY = {
 };
 
 exports.handler = async function(event, context) {
-    // Set CORS headers
+    // Set CORS headers - IMPORTANT FIX
     const headers = {
-        'Access-Control-Allow-Origin': 'https://iismitty.github.io/gun-range-bookings/', // In production, set this to your GitHub Pages URL
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Origin': '*', // Allow all origins for testing, narrow down later
+        'Access-Control-Allow-Headers': 'Content-Type, Accept',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
     };
 
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+        console.log("Handling OPTIONS preflight request");
         return {
             statusCode: 200,
             headers,
-            body: ''
+            body: JSON.stringify({ message: "Preflight call successful" })
         };
     }
 
@@ -38,6 +39,7 @@ exports.handler = async function(event, context) {
             body = JSON.parse(event.body);
         }
     } catch (error) {
+        console.log("Error parsing request body:", error);
         return {
             statusCode: 400,
             headers,
@@ -45,19 +47,29 @@ exports.handler = async function(event, context) {
         };
     }
 
+    console.log("Request method:", event.httpMethod);
+    console.log("Request params:", JSON.stringify(params));
+    console.log("Request body:", event.body ? JSON.stringify(body) : "none");
+
     // GET: Fetch bookings (availability or user bookings)
     if (event.httpMethod === 'GET') {
         try {
             // If email is provided, get user bookings
             if (params.email) {
+                console.log("Fetching bookings for email:", params.email);
+
                 const { data, error } = await supabase
                     .from('bookings')
                     .select('*')
                     .eq('email', params.email.toLowerCase())
                     .order('date', { ascending: true });
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Supabase error:", error);
+                    throw error;
+                }
 
+                console.log(`Returning ${data ? data.length : 0} bookings for user`);
                 return {
                     statusCode: 200,
                     headers,
@@ -67,6 +79,7 @@ exports.handler = async function(event, context) {
 
             // Otherwise get availability for date/range
             if (!params.date || !params.rangeType) {
+                console.log("Missing date or rangeType parameters");
                 return {
                     statusCode: 400,
                     headers,
@@ -74,14 +87,19 @@ exports.handler = async function(event, context) {
                 };
             }
 
+            console.log(`Checking availability for ${params.date}, ${params.rangeType}`);
             const { data, error } = await supabase
                 .from('bookings')
                 .select('*')
                 .eq('date', params.date)
                 .eq('range_type', params.rangeType);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase error:", error);
+                throw error;
+            }
 
+            console.log(`Returning ${data ? data.length : 0} existing bookings`);
             return {
                 statusCode: 200,
                 headers,
@@ -103,12 +121,15 @@ exports.handler = async function(event, context) {
             const { name, email, date, rangeType, timeSlot } = body;
 
             if (!name || !email || !date || !rangeType || !timeSlot) {
+                console.log("Missing required fields in booking request");
                 return {
                     statusCode: 400,
                     headers,
                     body: JSON.stringify({ error: 'All fields are required' })
                 };
             }
+
+            console.log(`Creating booking for ${email} on ${date}, ${rangeType}, ${timeSlot}`);
 
             // Check current capacity
             const { data: existingBookings, error: checkError } = await supabase
@@ -118,10 +139,14 @@ exports.handler = async function(event, context) {
                 .eq('range_type', rangeType)
                 .eq('time_slot', timeSlot);
 
-            if (checkError) throw checkError;
+            if (checkError) {
+                console.error("Supabase error checking capacity:", checkError);
+                throw checkError;
+            }
 
             // Check capacity limits
             if (existingBookings.length >= MAX_CAPACITY[rangeType]) {
+                console.log("Time slot is fully booked");
                 return {
                     statusCode: 409,
                     headers,
@@ -144,8 +169,12 @@ exports.handler = async function(event, context) {
                 ])
                 .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase error creating booking:", error);
+                throw error;
+            }
 
+            console.log("Booking created successfully");
             return {
                 statusCode: 201,
                 headers,
@@ -167,12 +196,15 @@ exports.handler = async function(event, context) {
             const { id, email } = params;
 
             if (!id || !email) {
+                console.log("Missing ID or email for cancellation");
                 return {
                     statusCode: 400,
                     headers,
                     body: JSON.stringify({ error: 'Booking ID and email are required' })
                 };
             }
+
+            console.log(`Cancelling booking ${id} for ${email}`);
 
             // Verify the booking belongs to this user
             const { data: bookingData, error: fetchError } = await supabase
@@ -183,6 +215,7 @@ exports.handler = async function(event, context) {
                 .single();
 
             if (fetchError) {
+                console.log("Booking not found or not owned by user:", fetchError);
                 return {
                     statusCode: 404,
                     headers,
@@ -196,8 +229,12 @@ exports.handler = async function(event, context) {
                 .delete()
                 .eq('id', id);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase error deleting booking:", error);
+                throw error;
+            }
 
+            console.log("Booking cancelled successfully");
             return {
                 statusCode: 200,
                 headers,
@@ -214,6 +251,7 @@ exports.handler = async function(event, context) {
     }
 
     // Handle unsupported methods
+    console.log(`Unsupported method: ${event.httpMethod}`);
     return {
         statusCode: 405,
         headers,
