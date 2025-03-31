@@ -336,16 +336,27 @@
 
   // Initialize application
   async function initialize() {
-    // Check if user is already logged in (via email)
+    // Check if user is already logged in (via email and session has password)
     const storedEmail = localStorage.getItem('rangeBookingEmail');
+    const storedPassword = sessionStorage.getItem('rangeBookingPassword');
+
     if (storedEmail) {
       emailInput.value = storedEmail;
+      document.getElementById('view-email').value = storedEmail;
+
       const storedName = localStorage.getItem('rangeBookingName');
       if (storedName) nameInput.value = storedName;
 
-      await getUserBookings(storedEmail);
+      // If we have both email and password in storage, try to verify and show bookings
+      if (storedPassword) {
+        document.getElementById('view-password').value = storedPassword;
+        await viewBookingsWithPassword(); // Use password verification flow
+      } else {
+        // Just show the prompt to enter password
+        bookingsList.innerHTML = '<p>Enter your email and password to view your bookings.</p>';
+      }
     } else {
-      bookingsList.innerHTML = '<p>Enter your email to see your bookings.</p>';
+      bookingsList.innerHTML = '<p>Enter your email and password to view your bookings.</p>';
     }
 
     // Add event listener for user identification
