@@ -15,7 +15,7 @@ const MAX_CAPACITY = {
 exports.handler = async function(event, context) {
     // Set CORS headers - IMPORTANT FIX
     const headers = {
-        'Access-Control-Allow-Origin': '*', // Allow all origins for testing, narrow down later
+        'Access-Control-Allow-Origin': 'https://iismitty.github.io', // Allow all origins for testing, narrow down later
         'Access-Control-Allow-Headers': 'Content-Type, Accept',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
     };
