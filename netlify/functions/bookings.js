@@ -172,7 +172,7 @@ exports.handler = async function(event, context) {
     // POST: Create a new booking
     if (event.httpMethod === 'POST') {
         try {
-            const { name, email, date, rangeType, timeSlot, password } = body;
+            const { name, email, date, rangeType, timeSlot, password_hash: password } = body;
 
             if (!name || !email || !date || !rangeType || !timeSlot || !password) {
                 return {
