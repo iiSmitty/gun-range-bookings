@@ -564,6 +564,8 @@
         <p><strong>Date:</strong> ${formattedDate}</p>
         <p><strong>Time:</strong> ${formatTimeSlot(booking.time_slot)}</p>
         <p><strong>Name:</strong> ${booking.name}</p>
+        <p><strong>Booking ID:</strong> ${booking.id.substring(0, 8)}</p>
+        <p><small>Save this information to manage your booking</small></p>
       `;
 
       const bookingActions = document.createElement('div');
@@ -571,7 +573,7 @@
 
       const cancelButton = document.createElement('button');
       cancelButton.textContent = 'Cancel';
-      cancelButton.addEventListener('click', () => cancelBooking(booking.id));
+      cancelButton.addEventListener('click', () => cancelBooking(booking.id, booking.cancellation_token));
 
       bookingActions.appendChild(cancelButton);
       bookingItem.appendChild(bookingDetails);

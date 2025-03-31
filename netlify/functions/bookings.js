@@ -155,6 +155,8 @@ exports.handler = async function(event, context) {
             }
 
             // Create booking
+            const cancellationToken = crypto.randomUUID();
+
             const { data, error } = await supabase
                 .from('bookings')
                 .insert([
@@ -164,7 +166,8 @@ exports.handler = async function(event, context) {
                         date,
                         range_type: rangeType,
                         time_slot: timeSlot,
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        cancellation_token: cancellationToken
                     }
                 ])
                 .select();
@@ -190,17 +193,58 @@ exports.handler = async function(event, context) {
         }
     }
 
-    // DELETE: Cancel a booking
+// DELETE: Cancel a booking
     if (event.httpMethod === 'DELETE') {
         try {
-            const { id, email } = params;
+            const { token, id } = params;
 
+            // First, try token-based cancellation (new approach)
+            if (token) {
+                console.log(`Cancelling booking with token ${token}`);
+
+                // Find the booking by cancellation token
+                const { data: bookingData, error: fetchError } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .eq('cancellation_token', token)
+                    .single();
+
+                if (fetchError) {
+                    console.log("Booking not found with provided token:", fetchError);
+                    return {
+                        statusCode: 404,
+                        headers,
+                        body: JSON.stringify({ error: 'Invalid cancellation token' })
+                    };
+                }
+
+                // Delete the booking
+                const { error } = await supabase
+                    .from('bookings')
+                    .delete()
+                    .eq('id', bookingData.id);
+
+                if (error) {
+                    console.error("Supabase error deleting booking:", error);
+                    throw error;
+                }
+
+                console.log("Booking cancelled successfully using token");
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({ success: true })
+                };
+            }
+
+            // Fall back to ID+email method (legacy/admin approach)
+            const { email } = params;
             if (!id || !email) {
                 console.log("Missing ID or email for cancellation");
                 return {
                     statusCode: 400,
                     headers,
-                    body: JSON.stringify({ error: 'Booking ID and email are required' })
+                    body: JSON.stringify({ error: 'Either a cancellation token or both ID and email are required' })
                 };
             }
 
@@ -234,7 +278,7 @@ exports.handler = async function(event, context) {
                 throw error;
             }
 
-            console.log("Booking cancelled successfully");
+            console.log("Booking cancelled successfully using ID+email");
             return {
                 statusCode: 200,
                 headers,
