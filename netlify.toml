@@ -1,0 +1,21 @@
+[build]
+# Directory to publish to Netlify's CDN
+publish = "dist"
+# Build command
+command = "npm run build"
+# Functions directory
+functions = "netlify/functions"
+
+# Redirects /api/bookings to our Netlify function
+[[redirects]]
+from = "/api/bookings"
+to = "/.netlify/functions/bookings"
+status = 200
+
+# Proxy all other requests to GitHub Pages
+[[redirects]]
+from = "/*"
+to = "https://iiSmitty.github.io/gun-range-bookings/:splat"
+status = 200
+force = true
+conditions = {Role = ["anonymous"]}
