@@ -227,7 +227,7 @@ exports.handler = async function(event, context) {
             const { error } = await supabase
                 .from('bookings')
                 .delete()
-                .eq('id', id);
+                .match({ id: id, email: email.toLowerCase() });
 
             if (error) {
                 console.error("Supabase error deleting booking:", error);
