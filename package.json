@@ -1,0 +1,23 @@
+{
+  "name": "gun-range-bookings",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iiSmitty/gun-range-bookings.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iiSmitty/gun-range-bookings/issues"
+  },
+  "homepage": "https://github.com/iiSmitty/gun-range-bookings#readme",
+  "description": "",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4"
+  }
+}
