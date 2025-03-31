@@ -53,6 +53,60 @@ exports.handler = async function(event, context) {
 
     // GET: Fetch bookings (availability or user bookings)
     if (event.httpMethod === 'GET') {
+        // Check if this is a password verification request
+        if (event.path.endsWith('/verify')) {
+            try {
+                const { email, password } = params;
+
+                if (!email || !password) {
+                    return {
+                        statusCode: 400,
+                        headers,
+                        body: JSON.stringify({ error: 'Email and password are required' })
+                    };
+                }
+
+                console.log(`Verifying password for email: ${email}`);
+
+                // Get bookings and verify password
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .eq('email', email.toLowerCase())
+                    .eq('password_hash', password) // Make sure this field name matches your DB schema
+                    .order('date', { ascending: true });
+
+                if (error) {
+                    console.error("Supabase error verifying password:", error);
+                    throw error;
+                }
+
+                // If no bookings found with this email+password combo
+                if (!data || data.length === 0) {
+                    console.log("Invalid email or password");
+                    return {
+                        statusCode: 401,
+                        headers,
+                        body: JSON.stringify({ error: 'Invalid email or password' })
+                    };
+                }
+
+                console.log(`Password verified, returning ${data.length} bookings`);
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify(data)
+                };
+            } catch (error) {
+                console.error('Error verifying password:', error);
+                return {
+                    statusCode: 500,
+                    headers,
+                    body: JSON.stringify({ error: 'Failed to verify password' })
+                };
+            }
+        }
+
         try {
             // If email is provided, get user bookings
             if (params.email) {
@@ -118,14 +172,21 @@ exports.handler = async function(event, context) {
     // POST: Create a new booking
     if (event.httpMethod === 'POST') {
         try {
-            const { name, email, date, rangeType, timeSlot } = body;
+            const { name, email, date, rangeType, timeSlot, password } = body;
 
-            if (!name || !email || !date || !rangeType || !timeSlot) {
-                console.log("Missing required fields in booking request");
+            if (!name || !email || !date || !rangeType || !timeSlot || !password) {
                 return {
                     statusCode: 400,
                     headers,
-                    body: JSON.stringify({ error: 'All fields are required' })
+                    body: JSON.stringify({ error: 'All fields including password are required' })
+                };
+            }
+
+            if (!password || password.length < 4) {
+                return {
+                    statusCode: 400,
+                    headers,
+                    body: JSON.stringify({ error: 'Password must be at least 4 characters' })
                 };
             }
 
@@ -155,8 +216,6 @@ exports.handler = async function(event, context) {
             }
 
             // Create booking
-            const cancellationToken = crypto.randomUUID();
-
             const { data, error } = await supabase
                 .from('bookings')
                 .insert([
@@ -166,8 +225,8 @@ exports.handler = async function(event, context) {
                         date,
                         range_type: rangeType,
                         time_slot: timeSlot,
-                        created_at: new Date().toISOString(),
-                        cancellation_token: cancellationToken
+                        password_hash: password,  // Store the password
+                        created_at: new Date().toISOString()
                     }
                 ])
                 .select();
@@ -196,74 +255,34 @@ exports.handler = async function(event, context) {
 // DELETE: Cancel a booking
     if (event.httpMethod === 'DELETE') {
         try {
-            const { token, id } = params;
+            const { id, email, password } = params;
 
-            // First, try token-based cancellation (new approach)
-            if (token) {
-                console.log(`Cancelling booking with token ${token}`);
-
-                // Find the booking by cancellation token
-                const { data: bookingData, error: fetchError } = await supabase
-                    .from('bookings')
-                    .select('*')
-                    .eq('cancellation_token', token)
-                    .single();
-
-                if (fetchError) {
-                    console.log("Booking not found with provided token:", fetchError);
-                    return {
-                        statusCode: 404,
-                        headers,
-                        body: JSON.stringify({ error: 'Invalid cancellation token' })
-                    };
-                }
-
-                // Delete the booking
-                const { error } = await supabase
-                    .from('bookings')
-                    .delete()
-                    .eq('id', bookingData.id);
-
-                if (error) {
-                    console.error("Supabase error deleting booking:", error);
-                    throw error;
-                }
-
-                console.log("Booking cancelled successfully using token");
-                return {
-                    statusCode: 200,
-                    headers,
-                    body: JSON.stringify({ success: true })
-                };
-            }
-
-            // Fall back to ID+email method (legacy/admin approach)
-            const { email } = params;
-            if (!id || !email) {
-                console.log("Missing ID or email for cancellation");
+            if (!id || !email || !password) {
+                console.log("Missing required cancellation fields");
                 return {
                     statusCode: 400,
                     headers,
-                    body: JSON.stringify({ error: 'Either a cancellation token or both ID and email are required' })
+                    body: JSON.stringify({ error: 'Booking ID, email and password are required' })
                 };
             }
 
-            console.log(`Cancelling booking ${id} for ${email}`);
+            console.log(`Attempting to cancel booking ${id} for ${email} with password verification`);
 
-            // Verify the booking belongs to this user
+            // Verify booking belongs to user and password is correct
             const { data: bookingData, error: fetchError } = await supabase
                 .from('bookings')
                 .select('*')
                 .eq('id', id)
                 .eq('email', email.toLowerCase())
+                .eq('password_hash', password) // Make sure this matches your DB field name
                 .single();
 
             if (fetchError) {
-                console.log("Booking not found or not owned by user:", fetchError);
+                console.log("Booking verification failed:", fetchError);
                 return {
-                    statusCode: 404,
+                    statusCode: 401,
                     headers,
-                    body: JSON.stringify({ error: 'Booking not found or not authorized' })
+                    body: JSON.stringify({ error: 'Invalid booking ID, email or password' })
                 };
             }
 
@@ -271,14 +290,14 @@ exports.handler = async function(event, context) {
             const { error } = await supabase
                 .from('bookings')
                 .delete()
-                .match({ id: id, email: email.toLowerCase() });
+                .eq('id', id);
 
             if (error) {
                 console.error("Supabase error deleting booking:", error);
                 throw error;
             }
 
-            console.log("Booking cancelled successfully using ID+email");
+            console.log("Booking cancelled successfully with password verification");
             return {
                 statusCode: 200,
                 headers,

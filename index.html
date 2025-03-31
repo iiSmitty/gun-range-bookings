@@ -194,6 +194,22 @@
       background-color: #e74c3c;
     }
 
+    .field-hint {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: -10px;
+      margin-bottom: 15px;
+    }
+
+    .view-bookings-form {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+
     @media (max-width: 768px) {
       .booking-section {
         flex-direction: column;
@@ -222,6 +238,10 @@
         <label for="email">Email:</label>
         <input type="email" id="email" required>
 
+        <label for="booking-password">Booking Password:</label>
+        <input type="password" id="booking-password" required>
+        <p class="field-hint">Create a password to securely manage your booking later.</p>
+
         <label for="date">Date:</label>
         <input type="date" id="date" required>
 
@@ -247,8 +267,18 @@
 
     <div class="bookings-container">
       <h2>Your Bookings</h2>
+      <div class="view-bookings-form">
+        <label for="view-email">Email:</label>
+        <input type="email" id="view-email">
+
+        <label for="view-password">Booking Password:</label>
+        <input type="password" id="view-password">
+
+        <button type="button" id="view-bookings-button">View My Bookings</button>
+      </div>
+
       <div id="bookings-list">
-        <p class="loading">Loading your bookings...</p>
+        <p>Enter your email and password to view your bookings.</p>
       </div>
     </div>
   </div>
@@ -302,6 +332,7 @@
   dateInput.addEventListener('change', checkAvailability);
   rangeTypeInput.addEventListener('change', checkAvailability);
   bookButton.addEventListener('click', createBooking);
+  document.getElementById('view-bookings-button').addEventListener('click', viewBookingsWithPassword);
 
   // Initialize application
   async function initialize() {
@@ -327,6 +358,43 @@
         await getUserBookings(emailInput.value);
       }
     });
+  }
+
+  // New function to view bookings with password
+  async function viewBookingsWithPassword() {
+    const email = document.getElementById('view-email').value;
+    const password = document.getElementById('view-password').value;
+
+    if (!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
+
+    // Store email but not password
+    localStorage.setItem('rangeBookingEmail', email);
+
+    bookingsList.innerHTML = '<p class="loading">Verifying credentials...</p>';
+
+    try {
+      // Get bookings with password verification
+      const response = await fetch(`${API_URL}/verify?email=${encodeURIComponent(email.toLowerCase())}&password=${encodeURIComponent(password)}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to verify credentials');
+      }
+
+      const data = await response.json();
+
+      // Save view password in session storage only (more secure than localStorage)
+      // This allows it to persist only until browser is closed
+      sessionStorage.setItem('rangeBookingPassword', password);
+
+      renderUserBookings(data || []);
+    } catch (err) {
+      console.error('Error fetching user bookings:', err);
+      bookingsList.innerHTML = '<p class="error">Invalid email or password. Please try again.</p>';
+    }
   }
 
   // Check availability for selected date and range type
@@ -448,6 +516,13 @@
     const email = emailInput.value;
     const date = dateInput.value;
     const rangeType = rangeTypeInput.value;
+    const password = document.getElementById('booking-password').value;
+
+    if (!password || password.length < 4) {
+      errorMessage.textContent = 'Please enter a password (minimum 4 characters)';
+      errorMessage.style.display = 'block';
+      return;
+    }
 
     // Show loading state
     bookButton.disabled = true;
@@ -466,7 +541,8 @@
           email: email.toLowerCase(),
           date: date,
           rangeType: rangeType,
-          timeSlot: selectedTimeSlot
+          timeSlot: selectedTimeSlot,
+          password: password
         })
       });
 
@@ -564,8 +640,6 @@
         <p><strong>Date:</strong> ${formattedDate}</p>
         <p><strong>Time:</strong> ${formatTimeSlot(booking.time_slot)}</p>
         <p><strong>Name:</strong> ${booking.name}</p>
-        <p><strong>Booking ID:</strong> ${booking.id.substring(0, 8)}</p>
-        <p><small>Save this information to manage your booking</small></p>
       `;
 
       const bookingActions = document.createElement('div');
@@ -573,7 +647,7 @@
 
       const cancelButton = document.createElement('button');
       cancelButton.textContent = 'Cancel';
-      cancelButton.addEventListener('click', () => cancelBooking(booking.id, booking.cancellation_token));
+      cancelButton.addEventListener('click', () => cancelBooking(booking.id));
 
       bookingActions.appendChild(cancelButton);
       bookingItem.appendChild(bookingDetails);
@@ -584,27 +658,49 @@
 
   // Cancel a booking
   async function cancelBooking(bookingId) {
+    // Get password from session storage or prompt
+    let password = sessionStorage.getItem('rangeBookingPassword');
+
+    // If no password in session storage, prompt for it
+    if (!password) {
+      password = prompt('Please enter your booking password to confirm cancellation:');
+      if (!password) return; // User canceled the prompt
+    }
+
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     try {
-      // Get user email
       const email = localStorage.getItem('rangeBookingEmail');
-      if (!email) {
-        throw new Error('User email not found');
-      }
 
-      // Delete booking through API
-      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(email)}`, {
+      // Delete booking through API with password verification
+      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
+        // If unauthorized (wrong password), prompt again
+        if (response.status === 401) {
+          sessionStorage.removeItem('rangeBookingPassword'); // Clear invalid password
+          alert('Invalid password. Please try again.');
+          // Try again with new password
+          cancelBooking(bookingId);
+          return;
+        }
+
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to cancel booking');
       }
 
-      // Refresh user bookings
-      await getUserBookings(email);
+      // Refresh user bookings with the saved password
+      const viewEmail = document.getElementById('view-email');
+      const viewPassword = document.getElementById('view-password');
+
+      // Set the form fields if they're empty
+      if (!viewEmail.value) viewEmail.value = email;
+      if (!viewPassword.value) viewPassword.value = password;
+
+      // Refresh the bookings
+      await viewBookingsWithPassword();
 
       // If we're viewing availability for the same date/range, refresh it
       if (dateInput.value && rangeTypeInput.value) {
