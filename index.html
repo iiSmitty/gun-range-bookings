@@ -456,24 +456,19 @@
 
   // Initialize application
   async function initialize() {
-    // Check if user is already logged in
-    const storedEmail = localStorage.getItem('rangeBookingEmail');
-    const storedName = localStorage.getItem('rangeBookingName');
-    const storedPassword = sessionStorage.getItem('rangeBookingPassword');
+    // Set today's date as minimum for date picker
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
 
-    if (storedEmail && storedPassword) {
-      // Try to verify the stored credentials
-      authEmailInput.value = storedEmail;
-      authPasswordInput.value = storedPassword;
-      if (storedName) authNameInput.value = storedName;
+    // Set default date to today
+    dateInput.value = today;
 
-      // Attempt to login with stored credentials
-      await handleAuth(true);
-    }
+    // Clear any session data for fresh start
+    sessionStorage.removeItem('rangeBookingSession');
   }
 
   // Handle authentication (login/register)
-  async function handleAuth(skipPrompts = false) {
+  async function handleAuth() {
     const email = authEmailInput.value.trim();
     const password = authPasswordInput.value.trim();
     const name = authNameInput.value.trim();
@@ -489,10 +484,8 @@
       return;
     }
 
-    if (!skipPrompts) {
-      loginButton.textContent = 'Verifying...';
-      loginButton.disabled = true;
-    }
+    loginButton.textContent = 'Verifying...';
+    loginButton.disabled = true;
 
     try {
       // Try to verify credentials
@@ -502,20 +495,13 @@
         // Successful login
         const data = await response.json();
 
-        // Store credentials
-        localStorage.setItem('rangeBookingEmail', email);
-        sessionStorage.setItem('rangeBookingPassword', password);
-
-        // Set user state
+        // Create secure session (in memory only, not stored)
         currentUser = {
           email: email,
           name: data[0]?.name || name,
+          password: password, // Store temporarily in memory for API calls
           isLoggedIn: true
         };
-
-        if (currentUser.name) {
-          localStorage.setItem('rangeBookingName', currentUser.name);
-        }
 
         // Update UI
         updateUIAfterLogin();
@@ -529,24 +515,18 @@
           return;
         }
 
-        if (!skipPrompts) {
-          const confirmRegister = confirm('No account found with these credentials. Would you like to register?');
-          if (!confirmRegister) {
-            loginButton.textContent = 'Login / Register';
-            loginButton.disabled = false;
-            return;
-          }
+        const confirmRegister = confirm('No account found with these credentials. Would you like to register?');
+        if (!confirmRegister) {
+          loginButton.textContent = 'Login / Register';
+          loginButton.disabled = false;
+          return;
         }
 
-        // Store the user info for use in the first booking
-        localStorage.setItem('rangeBookingEmail', email);
-        localStorage.setItem('rangeBookingName', name);
-        sessionStorage.setItem('rangeBookingPassword', password);
-
-        // Set user state
+        // Set user state for new user (memory only)
         currentUser = {
           email: email,
           name: name,
+          password: password,
           isLoggedIn: true
         };
 
@@ -564,10 +544,8 @@
       console.error('Authentication error:', error);
       showError(authError, error.message || 'Failed to authenticate');
     } finally {
-      if (!skipPrompts) {
-        loginButton.textContent = 'Login / Register';
-        loginButton.disabled = false;
-      }
+      loginButton.textContent = 'Login / Register';
+      loginButton.disabled = false;
     }
   }
 
@@ -587,13 +565,11 @@
 
   // Handle logout
   function handleLogout() {
-    // Clear session storage (but keep email in local storage for convenience)
-    sessionStorage.removeItem('rangeBookingPassword');
-
-    // Reset user state
+    // Reset user state completely
     currentUser = {
       email: null,
       name: null,
+      password: null,
       isLoggedIn: false
     };
 
@@ -601,6 +577,11 @@
     loginForm.style.display = 'block';
     loggedInView.style.display = 'none';
     authContainer.classList.remove('logged-in');
+
+    // Clear form fields for security
+    authEmailInput.value = '';
+    authPasswordInput.value = '';
+    authNameInput.value = '';
 
     // Reset booking list
     bookingsList.innerHTML = '<div class="loading">Login to view your bookings...</div>';
@@ -611,15 +592,20 @@
 
   // Load user bookings
   async function loadBookings() {
-    if (!currentUser.isLoggedIn) return;
+    if (!currentUser.isLoggedIn || !currentUser.password) return;
 
     bookingsList.innerHTML = '<div class="loading">Loading your bookings...</div>';
 
     try {
-      // Get bookings for the current user
-      const response = await fetch(`${API_URL}/verify?email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(sessionStorage.getItem('rangeBookingPassword'))}`);
+      // Get bookings for the current user using the in-memory password
+      const response = await fetch(`${API_URL}/verify?email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(currentUser.password)}`);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          // Session expired
+          handleLogout();
+          throw new Error('Your session has expired. Please login again.');
+        }
         throw new Error('Failed to load bookings');
       }
 
@@ -628,6 +614,7 @@
     } catch (error) {
       console.error('Error loading bookings:', error);
       bookingsList.innerHTML = '<div class="error-message">Failed to load your bookings. Please try again.</div>';
+      alert(error.message);
     }
   }
 
@@ -829,10 +816,8 @@
     bookingError.style.display = 'none';
 
     try {
-      // Get password from session storage
-      const password = sessionStorage.getItem('rangeBookingPassword');
-
-      if (!password) {
+      // Use password from memory
+      if (!currentUser.password) {
         throw new Error('Session expired. Please login again');
       }
 
@@ -848,7 +833,7 @@
           date: date,
           rangeType: rangeType,
           timeSlot: selectedTimeSlot,
-          password: password
+          password: currentUser.password
         })
       });
 
@@ -858,6 +843,10 @@
       }
 
       if (!response.ok) {
+        if (response.status === 401) {
+          handleLogout();
+          throw new Error('Your session has expired. Please login again.');
+        }
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to create booking');
       }
@@ -865,11 +854,18 @@
       // Booking successful
       alert('Booking confirmed successfully!');
 
-      // Reset form
-      dateInput.value = '';
-      rangeTypeInput.value = '';
+      // Reset form but keep date and range type for convenience
       selectedTimeSlot = null;
-      timeSlotsContainer.innerHTML = '<div class="loading">Select a date and range type to see available slots</div>';
+
+      // Remove selected time slot highlighting
+      document.querySelectorAll('.slot.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
+
+      bookButton.disabled = true;
+
+      // Refresh time slots (some may no longer be available)
+      checkAvailability();
 
       // Refresh bookings list
       loadBookings();
@@ -890,20 +886,18 @@
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     try {
-      const password = sessionStorage.getItem('rangeBookingPassword');
-
-      if (!password) {
+      if (!currentUser.password || !currentUser.isLoggedIn) {
+        handleLogout();
         throw new Error('Session expired. Please login again');
       }
 
       // Delete the booking
-      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(password)}`, {
+      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(currentUser.password)}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          sessionStorage.removeItem('rangeBookingPassword');
           handleLogout();
           throw new Error('Session expired. Please login again');
         }
@@ -915,8 +909,13 @@
       // Success
       alert('Booking cancelled successfully');
 
-      // Refresh bookings
-      loadBookings();
+      // Refresh bookings (await the async call)
+      await loadBookings();
+
+      // If viewing the same date/range as canceled booking, refresh availability
+      if (dateInput.value && rangeTypeInput.value) {
+        await checkAvailability();
+      }
     } catch (error) {
       console.error('Error cancelling booking:', error);
       alert(error.message || 'Failed to cancel booking');
