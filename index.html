@@ -33,11 +33,55 @@
       border-radius: 5px;
     }
 
-    .booking-section {
+    .tabs {
       display: flex;
-      flex-wrap: wrap;
-      gap: 30px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      background-color: #ecf0f1;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    .tab:first-child {
+      border-radius: 5px 0 0 5px;
+    }
+
+    .tab:last-child {
+      border-radius: 0 5px 5px 0;
+    }
+
+    .tab.active {
+      background-color: #2c3e50;
+      color: white;
+      border-color: #2c3e50;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .auth-container {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       margin-bottom: 30px;
+    }
+
+    .auth-container.logged-in {
+      background-color: #e8f5e9;
+      border-left: 5px solid #4caf50;
     }
 
     .form-container, .bookings-container {
@@ -45,7 +89,6 @@
       padding: 20px;
       border-radius: 5px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      flex: 1;
     }
 
     h2 {
@@ -53,6 +96,11 @@
       color: #2c3e50;
       border-bottom: 2px solid #eee;
       padding-bottom: 10px;
+    }
+
+    h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
     }
 
     form {
@@ -92,16 +140,31 @@
       cursor: not-allowed;
     }
 
+    button.secondary {
+      background-color: #7f8c8d;
+    }
+
+    button.secondary:hover {
+      background-color: #6c7a7c;
+    }
+
+    button.danger {
+      background-color: #e74c3c;
+    }
+
+    button.danger:hover {
+      background-color: #c0392b;
+    }
+
     .booking-item {
       padding: 15px;
-      border-bottom: 1px solid #eee;
+      border-left: 4px solid #3498db;
+      border-radius: 3px;
+      margin-bottom: 15px;
+      background-color: #f8f9fa;
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-
-    .booking-item:last-child {
-      border-bottom: none;
     }
 
     .booking-details {
@@ -110,7 +173,6 @@
 
     .booking-actions button {
       padding: 8px 12px;
-      background-color: #e74c3c;
     }
 
     .error-message {
@@ -127,13 +189,31 @@
       color: #7f8c8d;
     }
 
+    .no-bookings {
+      text-align: center;
+      padding: 30px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      color: #7f8c8d;
+    }
+
+    .login-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-info {
+      font-weight: bold;
+    }
+
     .slots-container {
       margin-top: 20px;
     }
 
     .time-slots {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
       margin-top: 15px;
     }
@@ -201,20 +281,7 @@
       margin-bottom: 15px;
     }
 
-    .view-bookings-form {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 20px;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 5px;
-    }
-
     @media (max-width: 768px) {
-      .booking-section {
-        flex-direction: column;
-      }
-
       .time-slots {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -228,20 +295,49 @@
     <p>Book your shooting sessions online</p>
   </header>
 
-  <div class="booking-section">
+  <!-- Login/Registration Section -->
+  <div id="auth-container" class="auth-container">
+    <div id="login-form">
+      <h3>Login or Register</h3>
+      <form id="auth-form">
+        <label for="auth-email">Email:</label>
+        <input type="email" id="auth-email" required>
+
+        <label for="auth-password">Password:</label>
+        <input type="password" id="auth-password" required>
+        <p class="field-hint">Create a password to secure your bookings or enter your existing one.</p>
+
+        <label for="auth-name">Full Name:</label>
+        <input type="text" id="auth-name" required>
+        <p class="field-hint">Required for new registrations.</p>
+
+        <div id="auth-error" class="error-message"></div>
+
+        <button type="button" id="login-button">Login / Register</button>
+      </form>
+    </div>
+
+    <div id="logged-in-view" style="display:none;">
+      <div class="login-info">
+        <div class="user-info">
+          Logged in as: <span id="user-email-display"></span>
+        </div>
+        <button type="button" id="logout-button" class="secondary">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <div class="tab active" data-tab="make-booking">Make a Booking</div>
+    <div class="tab" data-tab="view-bookings">View My Bookings</div>
+  </div>
+
+  <!-- Tab Content -->
+  <div id="make-booking" class="tab-content active">
     <div class="form-container">
       <h2>Make a Booking</h2>
       <form id="booking-form">
-        <label for="name">Full Name:</label>
-        <input type="text" id="name" required>
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" required>
-
-        <label for="booking-password">Booking Password:</label>
-        <input type="password" id="booking-password" required>
-        <p class="field-hint">Create a password to securely manage your booking later.</p>
-
         <label for="date">Date:</label>
         <input type="date" id="date" required>
 
@@ -259,42 +355,31 @@
           </div>
         </div>
 
-        <div id="error-message" class="error-message"></div>
+        <div id="booking-error" class="error-message"></div>
 
         <button type="button" id="book-button" disabled>Book Range Time</button>
       </form>
     </div>
+  </div>
 
+  <div id="view-bookings" class="tab-content">
     <div class="bookings-container">
       <h2>Your Bookings</h2>
-      <div class="view-bookings-form">
-        <label for="view-email">Email:</label>
-        <input type="email" id="view-email">
-
-        <label for="view-password">Booking Password:</label>
-        <input type="password" id="view-password">
-
-        <button type="button" id="view-bookings-button">View My Bookings</button>
-      </div>
-
-      <div id="bookings-list">
-        <p>Enter your email and password to view your bookings.</p>
+      <div id="bookings-list" class="loading">
+        Login to view your bookings...
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  // API endpoint - update this URL to your Netlify function
-  // When developing locally, use: const API_URL = 'http://localhost:8888/.netlify/functions/bookings';
-  // When deployed to production, use: const API_URL = 'https://your-netlify-site.netlify.app/.netlify/functions/bookings';
-  // OR if you've set up redirects in netlify.toml: const API_URL = '/api/bookings';
+  // API endpoint - update this to your Netlify function URL
   const API_URL = 'https://kraaifonteinrangebookings.netlify.app/.netlify/functions/bookings';
 
   // Configuration
   const MAX_CAPACITY = {
     ".22 Range": 5,  // 5 people per time slot
-    "Rifle Range": 3 // 3 people per time slot
+    "Rifle Range": 3  // 3 people per time slot
   };
 
   const TIME_SLOTS = [
@@ -308,113 +393,313 @@
     "16:00-17:00"
   ];
 
-  // Get DOM elements
-  const bookButton = document.getElementById('book-button');
-  const bookingsList = document.getElementById('bookings-list');
-  const nameInput = document.getElementById('name');
-  const emailInput = document.getElementById('email');
+  // User state
+  let currentUser = {
+    email: null,
+    name: null,
+    isLoggedIn: false
+  };
+
+  let selectedTimeSlot = null;
+
+  // DOM Elements
+  const tabs = document.querySelectorAll('.tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const authContainer = document.getElementById('auth-container');
+  const loginForm = document.getElementById('login-form');
+  const loggedInView = document.getElementById('logged-in-view');
+  const userEmailDisplay = document.getElementById('user-email-display');
+  const authEmailInput = document.getElementById('auth-email');
+  const authPasswordInput = document.getElementById('auth-password');
+  const authNameInput = document.getElementById('auth-name');
+  const loginButton = document.getElementById('login-button');
+  const logoutButton = document.getElementById('logout-button');
   const dateInput = document.getElementById('date');
   const rangeTypeInput = document.getElementById('range-type');
   const timeSlotsContainer = document.getElementById('time-slots');
-  const errorMessage = document.getElementById('error-message');
+  const bookButton = document.getElementById('book-button');
+  const bookingsList = document.getElementById('bookings-list');
+  const authError = document.getElementById('auth-error');
+  const bookingError = document.getElementById('booking-error');
+
+  // Event Listeners
+  document.addEventListener('DOMContentLoaded', initialize);
+  loginButton.addEventListener('click', handleAuth);
+  logoutButton.addEventListener('click', handleLogout);
+  dateInput.addEventListener('change', checkAvailability);
+  rangeTypeInput.addEventListener('change', checkAvailability);
+  bookButton.addEventListener('click', createBooking);
+
+  // Tab switching
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Only allow tab switching if logged in
+      if (!currentUser.isLoggedIn && tab.dataset.tab === 'view-bookings') {
+        alert('Please login first to view your bookings');
+        return;
+      }
+
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      tabContents.forEach(content => {
+        content.classList.remove('active');
+      });
+
+      document.getElementById(tab.dataset.tab).classList.add('active');
+    });
+  });
 
   // Set minimum date to today
   const today = new Date().toISOString().split('T')[0];
   dateInput.setAttribute('min', today);
 
-  // User state
-  let currentUser = null;
-  let selectedTimeSlot = null;
-  let availabilityData = {};
-
-  // Add event listeners
-  document.addEventListener('DOMContentLoaded', initialize);
-  dateInput.addEventListener('change', checkAvailability);
-  rangeTypeInput.addEventListener('change', checkAvailability);
-  bookButton.addEventListener('click', createBooking);
-  document.getElementById('view-bookings-button').addEventListener('click', viewBookingsWithPassword);
-
   // Initialize application
   async function initialize() {
-    // Check if user is already logged in (via email and session has password)
+    // Check if user is already logged in
     const storedEmail = localStorage.getItem('rangeBookingEmail');
+    const storedName = localStorage.getItem('rangeBookingName');
     const storedPassword = sessionStorage.getItem('rangeBookingPassword');
 
-    if (storedEmail) {
-      emailInput.value = storedEmail;
-      document.getElementById('view-email').value = storedEmail;
+    if (storedEmail && storedPassword) {
+      // Try to verify the stored credentials
+      authEmailInput.value = storedEmail;
+      authPasswordInput.value = storedPassword;
+      if (storedName) authNameInput.value = storedName;
 
-      const storedName = localStorage.getItem('rangeBookingName');
-      if (storedName) nameInput.value = storedName;
-
-      // If we have both email and password in storage, try to verify and show bookings
-      if (storedPassword) {
-        document.getElementById('view-password').value = storedPassword;
-        await viewBookingsWithPassword(); // Use password verification flow
-      } else {
-        // Just show the prompt to enter password
-        bookingsList.innerHTML = '<p>Enter your email and password to view your bookings.</p>';
-      }
-    } else {
-      bookingsList.innerHTML = '<p>Enter your email and password to view your bookings.</p>';
+      // Attempt to login with stored credentials
+      await handleAuth(true);
     }
-
-    // Add event listener for user identification
-    emailInput.addEventListener('blur', async function() {
-      if (emailInput.validity.valid && emailInput.value) {
-        localStorage.setItem('rangeBookingEmail', emailInput.value);
-        if (nameInput.value) {
-          localStorage.setItem('rangeBookingName', nameInput.value);
-        }
-        await getUserBookings(emailInput.value);
-      }
-    });
   }
 
-  // New function to view bookings with password
-  async function viewBookingsWithPassword() {
-    const email = document.getElementById('view-email').value;
-    const password = document.getElementById('view-password').value;
+  // Handle authentication (login/register)
+  async function handleAuth(skipPrompts = false) {
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value.trim();
+    const name = authNameInput.value.trim();
 
-    if (!email || !password) {
-      alert('Please enter both email and password');
+    // Validate inputs
+    if (!email) {
+      showError(authError, 'Email is required');
       return;
     }
 
-    // Store email but not password
-    localStorage.setItem('rangeBookingEmail', email);
+    if (!password || password.length < 4) {
+      showError(authError, 'Password must be at least 4 characters');
+      return;
+    }
 
-    bookingsList.innerHTML = '<p class="loading">Verifying credentials...</p>';
+    if (!skipPrompts) {
+      loginButton.textContent = 'Verifying...';
+      loginButton.disabled = true;
+    }
 
     try {
-      // Get bookings with password verification
+      // Try to verify credentials
       const response = await fetch(`${API_URL}/verify?email=${encodeURIComponent(email.toLowerCase())}&password=${encodeURIComponent(password)}`);
 
-      if (!response.ok) {
+      if (response.ok) {
+        // Successful login
+        const data = await response.json();
+
+        // Store credentials
+        localStorage.setItem('rangeBookingEmail', email);
+        sessionStorage.setItem('rangeBookingPassword', password);
+
+        // Set user state
+        currentUser = {
+          email: email,
+          name: data[0]?.name || name,
+          isLoggedIn: true
+        };
+
+        if (currentUser.name) {
+          localStorage.setItem('rangeBookingName', currentUser.name);
+        }
+
+        // Update UI
+        updateUIAfterLogin();
+
+        // Load bookings
+        loadBookings();
+      } else if (response.status === 401) {
+        // User not found - this could be a new registration
+        if (!name) {
+          showError(authError, 'Please enter your full name to register');
+          return;
+        }
+
+        if (!skipPrompts) {
+          const confirmRegister = confirm('No account found with these credentials. Would you like to register?');
+          if (!confirmRegister) {
+            loginButton.textContent = 'Login / Register';
+            loginButton.disabled = false;
+            return;
+          }
+        }
+
+        // Store the user info for use in the first booking
+        localStorage.setItem('rangeBookingEmail', email);
+        localStorage.setItem('rangeBookingName', name);
+        sessionStorage.setItem('rangeBookingPassword', password);
+
+        // Set user state
+        currentUser = {
+          email: email,
+          name: name,
+          isLoggedIn: true
+        };
+
+        // Update UI
+        updateUIAfterLogin();
+
+        // Show no bookings yet
+        bookingsList.innerHTML = '<div class="no-bookings">No bookings found. Make your first booking now!</div>';
+      } else {
+        // Other error
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to verify credentials');
+        throw new Error(errorData.error || 'Authentication failed');
       }
-
-      const data = await response.json();
-
-      // Save view password in session storage only (more secure than localStorage)
-      // This allows it to persist only until browser is closed
-      sessionStorage.setItem('rangeBookingPassword', password);
-
-      renderUserBookings(data || []);
-    } catch (err) {
-      console.error('Error fetching user bookings:', err);
-      bookingsList.innerHTML = '<p class="error">Invalid email or password. Please try again.</p>';
+    } catch (error) {
+      console.error('Authentication error:', error);
+      showError(authError, error.message || 'Failed to authenticate');
+    } finally {
+      if (!skipPrompts) {
+        loginButton.textContent = 'Login / Register';
+        loginButton.disabled = false;
+      }
     }
   }
 
-  // Check availability for selected date and range type
+  // Update UI after successful login
+  function updateUIAfterLogin() {
+    // Show logged in view
+    loginForm.style.display = 'none';
+    loggedInView.style.display = 'block';
+    authContainer.classList.add('logged-in');
+
+    // Update user display
+    userEmailDisplay.textContent = currentUser.email;
+
+    // Clear any auth errors
+    authError.style.display = 'none';
+  }
+
+  // Handle logout
+  function handleLogout() {
+    // Clear session storage (but keep email in local storage for convenience)
+    sessionStorage.removeItem('rangeBookingPassword');
+
+    // Reset user state
+    currentUser = {
+      email: null,
+      name: null,
+      isLoggedIn: false
+    };
+
+    // Reset UI
+    loginForm.style.display = 'block';
+    loggedInView.style.display = 'none';
+    authContainer.classList.remove('logged-in');
+
+    // Reset booking list
+    bookingsList.innerHTML = '<div class="loading">Login to view your bookings...</div>';
+
+    // Switch to booking tab
+    tabs[0].click();
+  }
+
+  // Load user bookings
+  async function loadBookings() {
+    if (!currentUser.isLoggedIn) return;
+
+    bookingsList.innerHTML = '<div class="loading">Loading your bookings...</div>';
+
+    try {
+      // Get bookings for the current user
+      const response = await fetch(`${API_URL}/verify?email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(sessionStorage.getItem('rangeBookingPassword'))}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load bookings');
+      }
+
+      const bookings = await response.json();
+      renderBookings(bookings);
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      bookingsList.innerHTML = '<div class="error-message">Failed to load your bookings. Please try again.</div>';
+    }
+  }
+
+  // Render bookings list
+  function renderBookings(bookings) {
+    bookingsList.innerHTML = '';
+
+    if (!bookings || bookings.length === 0) {
+      bookingsList.innerHTML = '<div class="no-bookings">No upcoming bookings found.</div>';
+      return;
+    }
+
+    // Filter only future bookings or today
+    const todayDate = new Date().toISOString().split('T')[0];
+    const futureBookings = bookings.filter(booking => booking.date >= todayDate);
+
+    if (futureBookings.length === 0) {
+      bookingsList.innerHTML = '<div class="no-bookings">No upcoming bookings found.</div>';
+      return;
+    }
+
+    // Sort bookings by date and time
+    futureBookings.sort((a, b) => {
+      if (a.date === b.date) {
+        return a.time_slot.localeCompare(b.time_slot);
+      }
+      return a.date.localeCompare(b.date);
+    });
+
+    // Create booking items
+    futureBookings.forEach(booking => {
+      const bookingItem = document.createElement('div');
+      bookingItem.classList.add('booking-item');
+
+      const bookingDate = new Date(booking.date);
+      const formattedDate = bookingDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+
+      const bookingDetails = document.createElement('div');
+      bookingDetails.classList.add('booking-details');
+      bookingDetails.innerHTML = `
+        <h3>${booking.range_type}</h3>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        <p><strong>Time:</strong> ${formatTimeSlot(booking.time_slot)}</p>
+      `;
+
+      const bookingActions = document.createElement('div');
+      bookingActions.classList.add('booking-actions');
+
+      const cancelButton = document.createElement('button');
+      cancelButton.classList.add('danger');
+      cancelButton.textContent = 'Cancel Booking';
+      cancelButton.addEventListener('click', () => cancelBooking(booking.id));
+
+      bookingActions.appendChild(cancelButton);
+      bookingItem.appendChild(bookingDetails);
+      bookingItem.appendChild(bookingActions);
+      bookingsList.appendChild(bookingItem);
+    });
+  }
+
+  // Check availability for the selected date and range
   async function checkAvailability() {
     // Reset state
     timeSlotsContainer.innerHTML = '<div class="loading">Loading available slots...</div>';
     selectedTimeSlot = null;
     bookButton.disabled = true;
-    errorMessage.style.display = 'none';
+    bookingError.style.display = 'none';
 
     const date = dateInput.value;
     const rangeType = rangeTypeInput.value;
@@ -425,7 +710,7 @@
     }
 
     try {
-      // Get bookings for the selected date and range type from our Netlify function
+      // Get current bookings for this date and range
       const response = await fetch(`${API_URL}?date=${date}&rangeType=${encodeURIComponent(rangeType)}`);
 
       if (!response.ok) {
@@ -433,19 +718,16 @@
         throw new Error(errorData.error || 'Failed to load availability');
       }
 
-      const data = await response.json();
-
-      // Process availability
-      renderTimeSlots(data || [], date, rangeType);
-    } catch (err) {
-      console.error('Error checking availability:', err);
-      errorMessage.textContent = err.message || 'Failed to load availability. Please try again.';
-      errorMessage.style.display = 'block';
+      const bookings = await response.json();
+      renderTimeSlots(bookings || [], date, rangeType);
+    } catch (error) {
+      console.error('Error checking availability:', error);
+      showError(bookingError, error.message || 'Failed to load availability');
       timeSlotsContainer.innerHTML = '';
     }
   }
 
-  // Render time slots with availability information
+  // Render available time slots
   function renderTimeSlots(bookings, date, rangeType) {
     timeSlotsContainer.innerHTML = '';
 
@@ -506,6 +788,13 @@
 
   // Select a time slot
   function selectTimeSlot(slotElement, timeSlot) {
+    // First check if user is logged in
+    if (!currentUser.isLoggedIn) {
+      alert('Please login or register first before booking');
+      authEmailInput.focus();
+      return;
+    }
+
     // Remove selection from all slots
     document.querySelectorAll('.slot.selected').forEach(el => {
       el.classList.remove('selected');
@@ -521,35 +810,41 @@
 
   // Create a new booking
   async function createBooking() {
-    if (!validateForm()) return;
+    if (!currentUser.isLoggedIn) {
+      showError(bookingError, 'Please login or register first');
+      return;
+    }
 
-    const name = nameInput.value;
-    const email = emailInput.value;
     const date = dateInput.value;
     const rangeType = rangeTypeInput.value;
-    const password = document.getElementById('booking-password').value;
 
-    if (!password || password.length < 4) {
-      errorMessage.textContent = 'Please enter a password (minimum 4 characters)';
-      errorMessage.style.display = 'block';
+    if (!date || !rangeType || !selectedTimeSlot) {
+      showError(bookingError, 'Please select a date, range type, and time slot');
       return;
     }
 
     // Show loading state
     bookButton.disabled = true;
     bookButton.textContent = 'Processing...';
-    errorMessage.style.display = 'none';
+    bookingError.style.display = 'none';
 
     try {
-      // Create the booking through our Netlify function
+      // Get password from session storage
+      const password = sessionStorage.getItem('rangeBookingPassword');
+
+      if (!password) {
+        throw new Error('Session expired. Please login again');
+      }
+
+      // Create the booking
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: name,
-          email: email.toLowerCase(),
+          name: currentUser.name,
+          email: currentUser.email,
           date: date,
           rangeType: rangeType,
           timeSlot: selectedTimeSlot,
@@ -567,191 +862,74 @@
         throw new Error(errorData.error || 'Failed to create booking');
       }
 
-      const data = await response.json();
+      // Booking successful
+      alert('Booking confirmed successfully!');
 
-      // Store user info
-      localStorage.setItem('rangeBookingEmail', email);
-      localStorage.setItem('rangeBookingName', name);
+      // Reset form
+      dateInput.value = '';
+      rangeTypeInput.value = '';
+      selectedTimeSlot = null;
+      timeSlotsContainer.innerHTML = '<div class="loading">Select a date and range type to see available slots</div>';
 
-      // Reset form and show success
-      resetForm();
-      alert('Booking confirmed!');
+      // Refresh bookings list
+      loadBookings();
 
-      // Refresh user bookings
-      await getUserBookings(email);
-
-    } catch (err) {
-      console.error('Error creating booking:', err);
-      errorMessage.textContent = err.message || 'Failed to create booking. Please try again.';
-      errorMessage.style.display = 'block';
+      // Switch to bookings tab
+      tabs[1].click();
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      showError(bookingError, error.message || 'Failed to create booking');
     } finally {
       bookButton.disabled = false;
       bookButton.textContent = 'Book Range Time';
     }
   }
 
-  // Get user bookings
-  async function getUserBookings(email) {
-    if (!email) return;
-
-    bookingsList.innerHTML = '<p class="loading">Loading your bookings...</p>';
-
-    try {
-      // Fetch user bookings from our Netlify function
-      const response = await fetch(`${API_URL}?email=${encodeURIComponent(email.toLowerCase())}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to load bookings');
-      }
-
-      const data = await response.json();
-      renderUserBookings(data || []);
-    } catch (err) {
-      console.error('Error fetching user bookings:', err);
-      bookingsList.innerHTML = '<p>Failed to load your bookings. Please try again.</p>';
-    }
-  }
-
-  // Render user bookings
-  function renderUserBookings(bookings) {
-    bookingsList.innerHTML = '';
-
-    if (bookings.length === 0) {
-      bookingsList.innerHTML = '<p>No upcoming bookings.</p>';
-      return;
-    }
-
-    // Filter only future bookings or today
-    const todayDate = new Date().toISOString().split('T')[0];
-    const futureBookings = bookings.filter(booking => booking.date >= todayDate);
-
-    if (futureBookings.length === 0) {
-      bookingsList.innerHTML = '<p>No upcoming bookings.</p>';
-      return;
-    }
-
-    futureBookings.forEach(booking => {
-      const bookingItem = document.createElement('div');
-      bookingItem.classList.add('booking-item');
-
-      const bookingDetails = document.createElement('div');
-      bookingDetails.classList.add('booking-details');
-
-      const bookingDate = new Date(booking.date);
-      const formattedDate = bookingDate.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-
-      bookingDetails.innerHTML = `
-        <h3>${booking.range_type}</h3>
-        <p><strong>Date:</strong> ${formattedDate}</p>
-        <p><strong>Time:</strong> ${formatTimeSlot(booking.time_slot)}</p>
-        <p><strong>Name:</strong> ${booking.name}</p>
-      `;
-
-      const bookingActions = document.createElement('div');
-      bookingActions.classList.add('booking-actions');
-
-      const cancelButton = document.createElement('button');
-      cancelButton.textContent = 'Cancel';
-      cancelButton.addEventListener('click', () => cancelBooking(booking.id));
-
-      bookingActions.appendChild(cancelButton);
-      bookingItem.appendChild(bookingDetails);
-      bookingItem.appendChild(bookingActions);
-      bookingsList.appendChild(bookingItem);
-    });
-  }
-
   // Cancel a booking
   async function cancelBooking(bookingId) {
-    // Get password from session storage or prompt
-    let password = sessionStorage.getItem('rangeBookingPassword');
-
-    // If no password in session storage, prompt for it
-    if (!password) {
-      password = prompt('Please enter your booking password to confirm cancellation:');
-      if (!password) return; // User canceled the prompt
-    }
-
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     try {
-      const email = localStorage.getItem('rangeBookingEmail');
+      const password = sessionStorage.getItem('rangeBookingPassword');
 
-      // Delete booking through API with password verification
-      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
+      if (!password) {
+        throw new Error('Session expired. Please login again');
+      }
+
+      // Delete the booking
+      const response = await fetch(`${API_URL}?id=${bookingId}&email=${encodeURIComponent(currentUser.email)}&password=${encodeURIComponent(password)}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
-        // If unauthorized (wrong password), prompt again
         if (response.status === 401) {
-          sessionStorage.removeItem('rangeBookingPassword'); // Clear invalid password
-          alert('Invalid password. Please try again.');
-          // Try again with new password
-          cancelBooking(bookingId);
-          return;
+          sessionStorage.removeItem('rangeBookingPassword');
+          handleLogout();
+          throw new Error('Session expired. Please login again');
         }
 
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to cancel booking');
       }
 
-      // Refresh user bookings with the saved password
-      const viewEmail = document.getElementById('view-email');
-      const viewPassword = document.getElementById('view-password');
+      // Success
+      alert('Booking cancelled successfully');
 
-      // Set the form fields if they're empty
-      if (!viewEmail.value) viewEmail.value = email;
-      if (!viewPassword.value) viewPassword.value = password;
-
-      // Refresh the bookings
-      await viewBookingsWithPassword();
-
-      // If we're viewing availability for the same date/range, refresh it
-      if (dateInput.value && rangeTypeInput.value) {
-        await checkAvailability();
-      }
-
-      alert('Booking cancelled successfully.');
-    } catch (err) {
-      console.error('Error cancelling booking:', err);
-      alert(err.message || 'Failed to cancel booking. Please try again.');
+      // Refresh bookings
+      loadBookings();
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert(error.message || 'Failed to cancel booking');
     }
   }
 
-  // Helper: Reset the booking form
-  function resetForm() {
-    // Keep the name and email
-    dateInput.value = '';
-    rangeTypeInput.value = '';
-    selectedTimeSlot = null;
-    timeSlotsContainer.innerHTML = '<div class="loading">Select a date and range type to see available slots</div>';
-    bookButton.disabled = true;
-
-    // Remove selected slot class
-    document.querySelectorAll('.slot.selected').forEach(el => {
-      el.classList.remove('selected');
-    });
+  // Helper function: Show error message
+  function showError(element, message) {
+    element.textContent = message;
+    element.style.display = 'block';
   }
 
-  // Helper: Validate form inputs
-  function validateForm() {
-    if (!nameInput.value || !emailInput.value || !dateInput.value ||
-            !rangeTypeInput.value || !selectedTimeSlot) {
-      errorMessage.textContent = 'Please fill out all fields and select a time slot.';
-      errorMessage.style.display = 'block';
-      return false;
-    }
-    return true;
-  }
-
-  // Helper: Format time slot for display
+  // Helper function: Format time slot
   function formatTimeSlot(timeSlot) {
     if (!timeSlot) return '';
 
