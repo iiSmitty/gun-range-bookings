@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto'); // Node.js built-in crypto module
 
 // Initialize Supabase with environment variables
 const supabase = createClient(
@@ -12,10 +13,36 @@ const MAX_CAPACITY = {
     "Rifle Range": 3 // 3 people per time slot
 };
 
+// Password hashing function
+function hashPassword(password, salt = null) {
+    // Generate a random salt if not provided
+    const passwordSalt = salt || crypto.randomBytes(16).toString('hex');
+
+    // Create HMAC with SHA-256
+    const hash = crypto.pbkdf2Sync(
+        password,         // Password to hash
+        passwordSalt,     // Salt
+        10000,            // Iterations - higher is more secure but slower
+        64,               // Key length
+        'sha256'          // Hash algorithm
+    ).toString('hex');
+
+    return {
+        hash,
+        salt: passwordSalt
+    };
+}
+
+// Verify password function
+function verifyPassword(password, storedHash, storedSalt) {
+    const { hash } = hashPassword(password, storedSalt);
+    return hash === storedHash;
+}
+
 exports.handler = async function(event, context) {
     // Set CORS headers - IMPORTANT FIX
     const headers = {
-        'Access-Control-Allow-Origin': 'https://iismitty.github.io', // Allow all origins for testing, narrow down later
+        'Access-Control-Allow-Origin': 'https://iismitty.github.io',
         'Access-Control-Allow-Headers': 'Content-Type, Accept',
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
     };
@@ -68,27 +95,57 @@ exports.handler = async function(event, context) {
 
                 console.log(`Verifying password for email: ${email}`);
 
-                // Get bookings and verify password
-                const { data, error } = await supabase
+                // First, get the user's salt and hash from the database
+                const { data: userData, error: userError } = await supabase
                     .from('bookings')
-                    .select('*')
+                    .select('password_hash, password_salt')
                     .eq('email', email.toLowerCase())
-                    .eq('password_hash', password) // Make sure this field name matches your DB schema
-                    .order('date', { ascending: true });
+                    .order('created_at', { ascending: false })
+                    .limit(1);
 
-                if (error) {
-                    console.error("Supabase error verifying password:", error);
-                    throw error;
-                }
-
-                // If no bookings found with this email+password combo
-                if (!data || data.length === 0) {
-                    console.log("Invalid email or password");
+                if (userError || !userData || userData.length === 0) {
+                    console.log("User not found or database error");
                     return {
                         statusCode: 401,
                         headers,
                         body: JSON.stringify({ error: 'Invalid email or password' })
                     };
+                }
+
+                // Verify the password
+                const storedHash = userData[0].password_hash;
+                const storedSalt = userData[0].password_salt;
+
+                // If the password is stored in clear text (migration case)
+                let passwordIsValid = false;
+
+                if (storedSalt === 'temp_salt') {
+                    // Legacy verification (clear text)
+                    passwordIsValid = (password === storedHash);
+                } else {
+                    // Proper verification with hash and salt
+                    passwordIsValid = verifyPassword(password, storedHash, storedSalt);
+                }
+
+                if (!passwordIsValid) {
+                    console.log("Invalid password");
+                    return {
+                        statusCode: 401,
+                        headers,
+                        body: JSON.stringify({ error: 'Invalid email or password' })
+                    };
+                }
+
+                // Get all bookings for this verified user
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .eq('email', email.toLowerCase())
+                    .order('date', { ascending: true });
+
+                if (error) {
+                    console.error("Supabase error fetching bookings:", error);
+                    throw error;
                 }
 
                 console.log(`Password verified, returning ${data.length} bookings`);
@@ -215,6 +272,9 @@ exports.handler = async function(event, context) {
                 };
             }
 
+            // Hash the password
+            const { hash, salt } = hashPassword(password);
+
             // Create booking
             const { data, error } = await supabase
                 .from('bookings')
@@ -225,8 +285,8 @@ exports.handler = async function(event, context) {
                         date,
                         range_type: rangeType,
                         time_slot: timeSlot,
-                        password_hash: password,  // Store the password
-                        password_salt: 'temp_salt',
+                        password_hash: hash,
+                        password_salt: salt,
                         created_at: new Date().toISOString()
                     }
                 ])
@@ -253,7 +313,7 @@ exports.handler = async function(event, context) {
         }
     }
 
-// DELETE: Cancel a booking
+    // DELETE: Cancel a booking
     if (event.httpMethod === 'DELETE') {
         try {
             const { id, email, password } = params;
@@ -269,21 +329,44 @@ exports.handler = async function(event, context) {
 
             console.log(`Attempting to cancel booking ${id} for ${email} with password verification`);
 
-            // Verify booking belongs to user and password is correct
+            // First, get the booking's salt and hash
             const { data: bookingData, error: fetchError } = await supabase
                 .from('bookings')
-                .select('*')
+                .select('id, email, password_hash, password_salt')
                 .eq('id', id)
                 .eq('email', email.toLowerCase())
-                .eq('password_hash', password) // Make sure this matches your DB field name
                 .single();
 
             if (fetchError) {
-                console.log("Booking verification failed:", fetchError);
+                console.log("Booking not found:", fetchError);
                 return {
                     statusCode: 401,
                     headers,
-                    body: JSON.stringify({ error: 'Invalid booking ID, email or password' })
+                    body: JSON.stringify({ error: 'Invalid booking ID or email' })
+                };
+            }
+
+            // Verify the password
+            let passwordIsValid = false;
+
+            if (bookingData.password_salt === 'temp_salt') {
+                // Legacy verification (clear text)
+                passwordIsValid = (password === bookingData.password_hash);
+            } else {
+                // Proper verification with hash and salt
+                passwordIsValid = verifyPassword(
+                    password,
+                    bookingData.password_hash,
+                    bookingData.password_salt
+                );
+            }
+
+            if (!passwordIsValid) {
+                console.log("Invalid password for booking cancellation");
+                return {
+                    statusCode: 401,
+                    headers,
+                    body: JSON.stringify({ error: 'Invalid password' })
                 };
             }
 
